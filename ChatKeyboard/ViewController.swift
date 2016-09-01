@@ -22,8 +22,11 @@ class ViewController: UIViewController {
     let maxHeight = CGFloat(400)
     
     
-    //Setting max height for accoessory view
+    //Storing height for accoessory view
     var lastHeight = CGFloat(0)
+    
+    //Storing height for keybaord view
+    var keyboardHeight = CGFloat(0)
     
     
     //Updating height for insets when view appeared
@@ -31,6 +34,13 @@ class ViewController: UIViewController {
         super.viewDidAppear(animated)
         lastHeight = accessoryView.frame.height
         self.updateInsets()
+        NSNotificationCenter.defaultCenter().addObserver(self, selector: #selector(ViewController.keyboardWillShow(_:)), name: UIKeyboardWillShowNotification, object: nil)
+        NSNotificationCenter.defaultCenter().addObserver(self, selector: #selector(ViewController.keyboardWillHide(_:)), name: UIKeyboardWillHideNotification, object: nil)
+    }
+    
+    override func viewWillDisappear(animated: Bool) {
+        super.viewWillDisappear(animated)
+        NSNotificationCenter.defaultCenter().removeObserver(self)
     }
     
     //Pointing the inputAccessoryView to custom View
@@ -45,6 +55,27 @@ class ViewController: UIViewController {
     }
 }
 
+//Observing keyboard animations
+extension ViewController {
+    func keyboardWillShow(notification: NSNotification) {
+        self.updateViewForKeyboard(true, notification: notification)
+    }
+    
+    func keyboardWillHide(notification: NSNotification) {
+        self.updateViewForKeyboard(false, notification: notification)
+    }
+    
+    func updateViewForKeyboard(showing: Bool, notification: NSNotification) {
+        keyboardHeight = CGFloat(0)
+        
+        if let keyboardSize = (notification.userInfo![UIKeyboardFrameBeginUserInfoKey] as? NSValue)?.CGRectValue() {
+            keyboardHeight = keyboardSize.height
+        }
+        
+        self.updateInsets()
+    }
+}
+
 
 //Mark: TextView Delegate to adjust accessory view frames
 extension ViewController: UITextViewDelegate {
@@ -53,7 +84,7 @@ extension ViewController: UITextViewDelegate {
         let heightDifference = (textView.superview?.frame.height)! - textView.frame.height
         let insets = textView.textContainerInset.top + textView.textContainerInset.bottom
         let newHeight = textView.contentSize.height + heightDifference + insets
-        if newHeight <= maxHeight && newHeight > lastHeight {
+        if newHeight <= maxHeight && newHeight != lastHeight && newHeight > 0 {
             lastHeight = newHeight
             UIView.animateWithDuration(0.3, animations: {
                 self.accessoryView.frame.size.height = self.lastHeight
@@ -63,7 +94,7 @@ extension ViewController: UITextViewDelegate {
     }
     
     func updateInsets() {
-        let contentInsets = UIEdgeInsets(top: 0, left: 0, bottom: self.lastHeight, right: 0)
+        let contentInsets = UIEdgeInsets(top: 0, left: 0, bottom: keyboardHeight, right: 0)
         self.tableView.contentInset = contentInsets
         self.tableView.scrollIndicatorInsets = contentInsets
     }
